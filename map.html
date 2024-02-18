@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OpenStreetMap without attribution</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 100vh;
+        }
+        .leaflet-control-attribution {
+            display: none !important;
+        }
+    .leaflet-control-scale-line {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: white;
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            font-size: 12px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="scale" class="leaflet-control-scale-line"></div>
+    <script>
+        var map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        var trackLayers = [];
+
+        function drawTrack(track) {
+            var polyline = L.polyline(track, { color: 'red' }).addTo(map);
+            trackLayers.push(polyline);
+			map.fitBounds(polyline.getBounds());
+        }
+
+        function clearTracks() {
+            for (var i = 0; i < trackLayers.length; i++) {
+                map.removeLayer(trackLayers[i]);
+            }
+            trackLayers = [];
+        }
+		
+		function calculateStats() {
+                        if (!trackPoints) {
+                            return { error: "No track loaded" };
+                        }
+
+                        var stats = {
+                            total_time: 0,
+                            moving_time: 0,
+                            resting_time: 0,
+                            max_speed: 0,
+                            avg_speed: 0,
+                        };
+
+                        var prev_point = null;
+                        for (var i = 0; i < trackPoints.length; i++) {
+                            var point = trackPoints[i];
+                            stats.total_time += point.time_difference(prev_point);
+                            
+                            if (prev_point) {
+                                var speed = point.speed_between(prev_point);
+                                if (speed) {
+                                    stats.moving_time += point.time_difference(prev_point);
+                                    stats.max_speed = Math.max(stats.max_speed, speed);
+                                    stats.avg_speed += speed;
+                                } else {
+                                    stats.resting_time += point.time_difference(prev_point);
+                                }
+                            }
+
+                            prev_point = point;
+                        }
+
+                        if (stats.moving_time > 0) {
+                            stats.avg_speed /= stats.moving_time;
+                        }
+
+                        return stats;
+                    }
+
+        map.on('zoomend', function() {
+            var scaleElement = document.getElementById('scale');
+            if (scaleElement) {
+                scaleElement.innerText = '1:' + Math.round(1 / map.getZoom());
+            }
+        });
+
+        map.whenReady(function() {
+            map.fire('zoomend'); // Update scale after map is fully loaded
+        });
+		
+		map.on('contextmenu', function(event) {
+            event.preventDefault(); // Prevent default context menu
+        });
+    </script>
+</body>
+</html>
