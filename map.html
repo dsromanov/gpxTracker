@@ -32,64 +32,52 @@
         var map = L.map('map').setView([0, 0], 2);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        var trackLayers = [];
+        var trackLayers = {};
 
-        function drawTrack(track) {
-            var polyline = L.polyline(track, { color: 'red' }).addTo(map);
-            trackLayers.push(polyline);
-			map.fitBounds(polyline.getBounds());
+        function drawTrack(track, color, thickness, trackName) {
+            var polylinePoints = track.map(function(point) {
+                return [point[0], point[1]];  // Оставляем только координаты широты и долготы
+            });
+
+            var polyline = L.polyline(polylinePoints, { weight: thickness, color: color }).addTo(map);
+            polyline.bindPopup(trackName); // Связываем имя трека с слоем трека
+            trackLayers[trackName] = polyline;
+            map.fitBounds(polyline.getBounds());
         }
 
         function clearTracks() {
-            for (var i = 0; i < trackLayers.length; i++) {
-                map.removeLayer(trackLayers[i]);
+            for (var key in trackLayers) {
+                if (trackLayers.hasOwnProperty(key)) {
+                    map.removeLayer(trackLayers[key]);
+                    delete trackLayers[key];
+                }
             }
-            trackLayers = [];
+            trackLayers = {};
         }
-		
-		function calculateStats() {
-                        if (!trackPoints) {
-                            return { error: "No track loaded" };
-                        }
 
-                        var stats = {
-                            total_time: 0,
-                            moving_time: 0,
-                            resting_time: 0,
-                            max_speed: 0,
-                            avg_speed: 0,
-                        };
+        function focusOnTrack(trackName) {
+            var foundTrack = trackLayers[trackName];
 
-                        var prev_point = null;
-                        for (var i = 0; i < trackPoints.length; i++) {
-                            var point = trackPoints[i];
-                            stats.total_time += point.time_difference(prev_point);
-                            
-                            if (prev_point) {
-                                var speed = point.speed_between(prev_point);
-                                if (speed) {
-                                    stats.moving_time += point.time_difference(prev_point);
-                                    stats.max_speed = Math.max(stats.max_speed, speed);
-                                    stats.avg_speed += speed;
-                                } else {
-                                    stats.resting_time += point.time_difference(prev_point);
-                                }
-                            }
+            if (foundTrack) {
+                map.fitBounds(foundTrack.getBounds());
+            } else {
+                alert("Трек с указанным названием не найден на карте.");
+            }
+        }
 
-                            prev_point = point;
-                        }
+        function setMapScale(scale) {
+            map.setZoom(scale);
+        }
 
-                        if (stats.moving_time > 0) {
-                            stats.avg_speed /= stats.moving_time;
-                        }
-
-                        return stats;
-                    }
+        function getMapScale() {
+            // Получаем текущий уровень масштабирования карты
+            return map.getZoom();
+        }
 
         map.on('zoomend', function() {
             var scaleElement = document.getElementById('scale');
             if (scaleElement) {
-                scaleElement.innerText = '1:' + Math.round(1 / map.getZoom());
+                scaleElement.innerText = '1:' +  map.getZoom();
             }
         });
 
