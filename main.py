@@ -1,5 +1,4 @@
 import math
-import math
 import os
 import sys
 import time
@@ -126,7 +125,11 @@ class MapWidget(QMainWindow):
     def load_gpx(self, file_name, color, thickness):
         if file_name:
             with open(file_name, 'r') as gpx_file:
-                gpx = gpxpy.parse(gpx_file)
+                try:
+                    gpx = gpxpy.parse(gpx_file)
+                except (gpxpy.gpx.GPXException, ValueError) as e:
+                    print("Ошибка при парсинге GPX файла:", e)
+                    QMessageBox.warning(self, "Ошибка", "Невозможно открыть GPX файл.")
                 track_points = []  # Список точек текущего трека
                 for track in gpx.tracks:
                     for segment in track.segments:
